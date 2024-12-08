@@ -396,17 +396,17 @@ x = Dropout(0.6)(x)
 # dense layers for classification
 x = Dense(128, activation='relu', kernel_regularizer=l2(0.01))(x)
 x = Dropout(0.6)(x)
-output = Dense(num_classes, activation='softmax')(x)
+output = Dense(1, activation='sigmoid')(x)
 
 
 model = Model(inputs=[sequence_input1, sequence_input2], outputs=output)
-model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
 model.summary()
 
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, LearningRateScheduler
 
-filepath = '/content/CNNLSTM_model_epoch_{epoch:02d}_val_acc_{val_accuracy:.2f}.keras'
+filepath = '/content/model_epoch_{epoch:02d}_val_acc_{val_accuracy:.2f}.keras'
 
 checkpoint_callback = ModelCheckpoint(
     filepath=filepath,
