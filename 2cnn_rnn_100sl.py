@@ -396,11 +396,11 @@ x = Dropout(0.6)(x)
 # dense layers for classification
 x = Dense(128, activation='relu', kernel_regularizer=l2(0.01))(x)
 x = Dropout(0.6)(x)
-output = Dense(1, activation='sigmoid')(x)
+output = Dense(num_classes, activation='softmax')(x)
 
 
 model = Model(inputs=[sequence_input1, sequence_input2], outputs=output)
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
 model.summary()
 
