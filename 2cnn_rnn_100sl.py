@@ -350,8 +350,8 @@ print("Data loaded successfully!")
 """## Model building and Training"""
 
 import tensorflow as tf
-from tensorflow.keras.applications import ResNet50, InceptionV3, MobileNetV2
-from tensorflow.keras.layers import Input, TimeDistributed, Bidirectional, LSTM, Dense, Dropout, concatenate, GlobalAveragePooling2D, GRU
+from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.layers import Input, TimeDistributed, Bidirectional, LSTM, Dense, Dropout, GlobalAveragePooling2D, GRU
 from tensorflow.keras.models import Model
 from tensorflow.keras.regularizers import l2
 import pickle
@@ -361,36 +361,22 @@ sequence_length = 100
 num_classes = 2
 
 
-# CNN Branch 1
+# CNN Branch: MobileNetV2
 base_model1 = MobileNetV2(weights='imagenet', include_top=False, input_shape=input_shape)
 cnn_input1 = Input(shape=input_shape)
 x1 = base_model1(cnn_input1)
 x1 = GlobalAveragePooling2D()(x1)
-cnn1 = Model(cnn_input1, x1)
-
-# CNN Branch 2
-base_model2 = MobileNetV2(weights='imagenet', include_top=False, input_shape=input_shape)
-cnn_input2 = Input(shape=input_shape)
-x2 = base_model2(cnn_input2)
-x2 = GlobalAveragePooling2D()(x2)
-cnn2 = Model(cnn_input2, x2)
+cnn = Model(cnn_input1, x1)
 
 
-# TimeDistributed for each CNN branch
-sequence_input1 = Input(shape=(sequence_length, 224, 224, 3))
-sequence_input2 = Input(shape=(sequence_length, 224, 224, 3))
-time_distributed1 = TimeDistributed(cnn1)(sequence_input1)
-time_distributed2 = TimeDistributed(cnn2)(sequence_input2)
-
-
-# Combine outputs from both CNN branches
-combined_features = concatenate([time_distributed1, time_distributed2])
-
+# TimeDistributed for CNN branch
+sequence_input = Input(shape=(sequence_length, 224, 224, 3))
+time_distributed = TimeDistributed(cnn)(sequence_input)
 
 # RNN layer for temporal modeling
-x = Bidirectional(LSTM(64, return_sequences=False))(combined_features)
-#x = LSTM(128, return_sequences=False)(combined_features)
-#x = GRU(128, return_sequences=False)(combined_features)
+x = Bidirectional(LSTM(64, return_sequences=False))(time_distributed)
+#x = LSTM(64, return_sequences=False)(time_distributed)
+#x = GRU(64, return_sequences=False)(time_distributed)
 x = Dropout(0.6)(x)
 
 # dense layers for classification
@@ -399,7 +385,7 @@ x = Dropout(0.6)(x)
 output = Dense(num_classes, activation='softmax')(x)
 
 
-model = Model(inputs=[sequence_input1, sequence_input2], outputs=output)
+model = Model(inputs=sequence_input, outputs=output)
 model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
 model.summary()
@@ -429,9 +415,9 @@ lr_schedule = LearningRateScheduler(
 
 
 history = model.fit(
-    [X_train, X_train],
+    X_train,
     y_train,
-    validation_data=([X_val, X_val], y_val),
+    validation_data=(X_val, y_val),
     epochs=20,
     batch_size=8,
     callbacks=[checkpoint_callback, early_stopping, lr_schedule]
@@ -449,12 +435,12 @@ import numpy as np
 best_model = load_model('Bath of best performing model ')
 
 # Evaluate the model on the test set
-test_loss, test_accuracy = best_model.evaluate([X_test, X_test], y_test, verbose=2)
+test_loss, test_accuracy = best_model.evaluate(X_test, y_test, verbose=2)
 print(f"Test Loss: {test_loss}")
 print(f"Test Accuracy: {test_accuracy}")
 
 # Predict on the test set
-y_pred_probs = best_model.predict([X_test, X_test])  # Get probabilities
+y_pred_probs = best_model.predict(X_test)  # Get probabilities
 y_pred = np.argmax(y_pred_probs, axis=1)  # Convert probabilities to class labels
 
 # Print classification report
